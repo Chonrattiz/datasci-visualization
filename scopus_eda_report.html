@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Scopus EDA Report — Trend, Citation, Keyword Analysis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.32.0/plotly.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f8fa;
+    --panel:#ffffff;
+    --panel2:#f1f4f8;
+    --border:#e6e9ee;
+    --border-strong:#dde1e8;
+    --text:#1b2430;
+    --sub:#6b7688;
+    --accent:#3457d5;
+    --accent-soft:#eef1fd;
+    --accent2:#e3722f;
+    --accent3:#1f9d6c;
+    --shadow: 0 1px 2px rgba(20,25,40,0.04), 0 8px 24px -12px rgba(20,25,40,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter','Sarabun', -apple-system, 'Segoe UI', Arial, sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{
+    padding:40px 40px 28px;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+  }
+  header .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--accent);
+    font-weight:500;
+    margin-bottom:8px;
+  }
+  header h1{
+    margin:0 0 6px;
+    font-size:27px;
+    font-weight:800;
+    letter-spacing:-.01em;
+    color:#0f1626;
+  }
+  header p{
+    margin:0;
+    color:var(--sub);
+    font-size:14px;
+  }
+  .wrap{
+    max-width:1200px;
+    margin:0 auto;
+    padding:0 40px 60px;
+  }
+  .kpis{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:14px;
+    margin:28px 0 8px;
+  }
+  .kpi{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px 18px;
+    box-shadow:var(--shadow);
+  }
+  .kpi .num{
+    font-size:27px;
+    font-weight:800;
+    color:var(--accent);
+    letter-spacing:-.01em;
+  }
+  .kpi .label{
+    font-size:12.5px;
+    color:var(--sub);
+    margin-top:5px;
+    font-weight:500;
+  }
+  section{
+    margin-top:46px;
+  }
+  section h2{
+    font-size:19px;
+    font-weight:700;
+    margin:0 0 5px;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    color:#0f1626;
+  }
+  section h2 .tag{
+    font-size:11px;
+    background:var(--accent-soft);
+    border:1px solid #dde3fb;
+    color:var(--accent);
+    padding:3px 10px;
+    border-radius:20px;
+    font-weight:600;
+  }
+  section .desc{
+    color:var(--sub);
+    font-size:13.5px;
+    margin:0 0 16px;
+    max-width:800px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:16px 14px 6px;
+    box-shadow:var(--shadow);
+  }
+  .grid2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+  }
+  @media(max-width:900px){
+    .grid2{grid-template-columns:1fr;}
+    .kpis{grid-template-columns:repeat(2,1fr);}
+    .wrap{padding:0 18px 60px;}
+    header{padding:28px 18px 22px;}
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  th, td{
+    text-align:left;
+    padding:11px 12px;
+    border-bottom:1px solid var(--border);
+    vertical-align:top;
+  }
+  th{
+    color:var(--sub);
+    font-weight:600;
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    background:var(--panel2);
+    position:sticky;
+    top:0;
+  }
+  tbody tr:hover td{ background:var(--accent-soft); }
+  .cite-badge{
+    display:inline-block;
+    background:var(--accent-soft);
+    color:var(--accent);
+    border-radius:20px;
+    padding:3px 11px;
+    font-weight:700;
+    font-size:12.5px;
+  }
+  .note{
+    background:#fff8ec;
+    border:1px solid #f3e3c2;
+    border-radius:12px;
+    padding:13px 16px;
+    font-size:13px;
+    color:#8a6a2f;
+    margin-top:14px;
+  }
+  a{color:var(--accent); text-decoration:none; font-weight:500;}
+  a:hover{text-decoration:underline;}
+  footer{
+    text-align:center;
+    color:var(--sub);
+    font-size:12px;
+    padding:30px 0 10px;
+    border-top:1px solid var(--border);
+    margin-top:50px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">SCOPUS EXPORT · EDA REPORT</div>
+  <h1>Trend, Citation &amp; Keyword Analysis</h1>
+  <p>1,000 records · Generated 10 Aug 2026</p>
+</header>
+
+<div class="wrap">
+
+  <div class="kpis">
+    <div class="kpi"><div class="num" id="kpi-total">–</div><div class="label">บทความทั้งหมด</div></div>
+    <div class="kpi"><div class="num" id="kpi-sources">–</div><div class="label">แหล่งตีพิมพ์ (unique)</div></div>
+    <div class="kpi"><div class="num" id="kpi-cited">–</div><div class="label">บทความที่ถูกอ้างอิง ≥1</div></div>
+    <div class="kpi"><div class="num" id="kpi-totalcite">–</div><div class="label">ยอดอ้างอิงรวม</div></div>
+    <div class="kpi"><div class="num" id="kpi-oa">–</div><div class="label">% Open Access</div></div>
+  </div>
+
+  <div class="note">
+    ⚠️ <b>สังเกต:</b> ชุดข้อมูลนี้เป็นบทความที่เพิ่งตีพิมพ์มาก (ปี 2026–2027 เกือบทั้งหมด รวมถึง "in press") ทำให้ยอดอ้างอิง (Cited by) ยังต่ำมาก — เหมาะกับการดู trend หัวข้อ/แหล่งตีพิมพ์ มากกว่าการวัด impact ระยะยาว
+  </div>
+
+  <!-- TREND -->
+  <section>
+    <h2>1. Trend — แนวโน้มการตีพิมพ์ <span class="tag">Trend</span></h2>
+    <p class="desc">จำนวนบทความแยกตามปีและประเภทเอกสาร</p>
+    <div class="grid2">
+      <div class="card"><div id="chart-year-type" style="height:380px;"></div></div>
+      <div class="card"><div id="chart-doctype" style="height:380px;"></div></div>
+    </div>
+  </section>
+
+  <!-- SOURCES -->
+  <section>
+    <h2>2. แหล่งตีพิมพ์ (Top Sources) <span class="tag">Trend</span></h2>
+    <p class="desc">วารสาร / Conference proceedings ที่มีบทความในชุดข้อมูลนี้มากที่สุด</p>
+    <div class="card"><div id="chart-sources" style="height:460px;"></div></div>
+  </section>
+
+  <!-- AUTHORS -->
+  <section>
+    <h2>3. ผู้เขียน <span class="tag">Trend</span></h2>
+    <div class="grid2">
+      <div class="card">
+        <div id="chart-authors" style="height:400px;"></div>
+      </div>
+      <div class="card">
+        <div id="chart-nauthors" style="height:400px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CITATION -->
+  <section>
+    <h2>4. Citation Analysis <span class="tag">Citation</span></h2>
+    <p class="desc">การกระจายตัวของจำนวนการอ้างอิง และบทความที่ถูกอ้างอิงมากที่สุด</p>
+    <div class="grid2">
+      <div class="card"><div id="chart-citedist" style="height:380px;"></div></div>
+      <div class="card"><div id="chart-oa" style="height:460px;"></div></div>
+    </div>
+
+    <div class="card" style="margin-top:20px; padding:18px;">
+      <h3 style="margin-top:0; font-size:15px;">🏆 Top Cited Papers</h3>
+      <table id="table-top-cited">
+        <thead>
+          <tr><th style="width:34px;">#</th><th>Title</th><th>ผู้เขียน</th><th>แหล่งตีพิมพ์</th><th>ปี</th><th style="text-align:center;">Cited</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- KEYWORDS -->
+  <section>
+    <h2>5. Keyword Analysis <span class="tag">Keyword</span></h2>
+    <p class="desc">คำสำคัญ (Author Keywords) ที่พบบ่อยที่สุดในชุดข้อมูล — นับความถี่แบบตรงตัว (exact match) ยังไม่ใช้ text embedding</p>
+    <div class="card"><div id="chart-keywords" style="height:560px;"></div></div>
+  </section>
+
+</div>
+
+<footer>
+  สร้างจากไฟล์ scopus_export_Aug_10-2026 &middot; วิเคราะห์ด้วย Python (pandas) + แสดงผลด้วย Plotly.js
+</footer>
+
+<script>
+const DATA = {
+  "total_papers": 1000,
+  "year_type": {
+    "2026": {
+      "Article": 119,
+      "Conference paper": 2,
+      "Conference review": 0,
+      "Letter": 0,
+      "Review": 14
+    },
+    "2027": {
+      "Article": 201,
+      "Conference paper": 598,
+      "Conference review": 30,
+      "Letter": 1,
+      "Review": 35
+    }
+  },
+  "doc_types": {
+    "Conference paper": 600,
+    "Article": 320,
+    "Review": 49,
+    "Conference review": 30,
+    "Letter": 1
+  },
+  "top_kw": [
+    [
+      "artificial intelligence",
+      135
+    ],
+    [
+      "large language models",
+      67
+    ],
+    [
+      "machine learning",
+      63
+    ],
+    [
+      "generative ai",
+      63
+    ],
+    [
+      "explainable ai",
+      27
+    ],
+    [
+      "large language model",
+      21
+    ],
+    [
+      "explainable artificial intelligence",
+      20
+    ],
+    [
+      "generative artificial intelligence",
+      20
+    ],
+    [
+      "artificial intelligence (ai)",
+      18
+    ],
+    [
+      "higher education",
+      16
+    ],
+    [
+      "ai",
+      16
+    ],
+    [
+      "learning analytics",
+      16
+    ],
+    [
+      "ai literacy",
+      15
+    ],
+    [
+      "deep learning",
+      15
+    ],
+    [
+      "retrieval-augmented generation",
+      15
+    ],
+    [
+      "shap",
+      13
+    ],
+    [
+      "cybersecurity",
+      11
+    ],
+    [
+      "natural language processing",
+      11
+    ],
+    [
+      "federated learning",
+      11
+    ],
+    [
+      "collaborative learning",
+      10
+    ],
+    [
+      "human-ai collaboration",
+      10
+    ],
+    [
+      "llm",
+      10
+    ],
+    [
+      "clinical decision support",
+      8
+    ],
+    [
+      "decision support systems",
+      8
+    ],
+    [
+      "large language models (llms)",
+      8
+    ]
+  ],
+  "top_sources": {
+    "Lecture Notes in Computer Science": 442,
+    "Expert Systems with Applications": 116,
+    "Lecture Notes in Networks and Systems": 60,
+    "IFIP Advances in Information and Communication Technology": 58,
+    "Communications in Computer and Information Science": 49,
+    "Information Processing and Management": 21,
+    "Neural Networks": 15,
+    "Journal of Retailing and Consumer Services": 11,
+    "Reliability Engineering and System Safety": 11,
+    "Electric Power Systems Research": 9,
+    "Smart Innovation, Systems and Technologies": 9,
+    "Talanta": 8,
+    "Mechanisms and Machine Science": 8,
+    "International Journal of Hospitality Management": 7,
+    "Future Generation Computer Systems": 7
+  },
+  "top_authors": [
+    [
+      "Song, Yukyeong",
+      5
+    ],
+    [
+      "Bellazzi, Riccardo",
+      4
+    ],
+    [
+      "Xing, Wanli",
+      4
+    ],
+    [
+      "Karumbaiah, Shamya",
+      4
+    ],
+    [
+      "Zhai, Xiaoming",
+      3
+    ],
+    [
+      "Mota, Vinícius F. S.",
+      3
+    ],
+    [
+      "Huang, Yueh-Min",
+      3
+    ],
+    [
+      "Shadiev, Rustam",
+      3
+    ],
+    [
+      "Zhang, Yi",
+      3
+    ],
+    [
+      "Rodrigues, Luiz",
+      3
+    ],
+    [
+      "Chochliouros, Ioannis P.",
+      3
+    ],
+    [
+      "Spiliopoulou, Anastasia S.",
+      3
+    ],
+    [
+      "Cordeiro, Luís",
+      3
+    ],
+    [
+      "Fernandes, João",
+      3
+    ],
+    [
+      "Filipe, Sandra",
+      3
+    ]
+  ],
+  "n_authors_dist": {
+    "0": 30,
+    "1": 44,
+    "2": 167,
+    "3": 197,
+    "4": 176,
+    "5": 125,
+    "6": 114,
+    "7": 54,
+    "8": 39,
+    "9": 28,
+    "10": 8,
+    "11": 4,
+    "12": 4,
+    "13": 2,
+    "14": 2,
+    "16": 5,
+    "20": 1
+  },
+  "oa_counts": {
+    "Not specified / Closed": 853,
+    "All Open Access; Hybrid Gold Open Access": 73,
+    "All Open Access; Green Open Access": 24,
+    "All Open Access; Gold Open Access; Green Open Access": 20,
+    "All Open Access; Gold Open Access": 16,
+    "All Open Access; Green Open Access; Hybrid Gold Open Access": 11,
+    "All Open Access; Bronze Open Access": 3
+  },
+  "cited_dist": {
+    "0": 966,
+    "1": 14,
+    "2": 5,
+    "3": 8,
+    "4": 3,
+    "5": 1,
+    "7": 2,
+    "9": 1
+  },
+  "total_citations": 88,
+  "papers_with_citation": 34
+};
+const TOP_CITED = [{"Title":"An enhanced interpretable ML approach for forecasting long-term CO2 and N2O emissions via optimized random forest modeling","Authors":"Özüpak Y.; Aslan E.","Year":2027,"Source title":"Fuel","Cited by":9,"DOI":"10.1016\/j.fuel.2026.139723"},{"Title":"Dancing with the algorithm: a framework to navigate knowledge and autonomy in AI-assisted managerial decisions","Authors":"Cristofaro M.; Bañón-Gomis A.J.","Year":2026,"Source title":"Journal of Knowledge Management","Cited by":7,"DOI":"10.1108\/JKM-06-2025-0870"},{"Title":"Stabilizing truth in educational sciences: a systematic review of generative AI in education","Authors":"Brezovec E.; Zelić M.; Zagode A.M.","Year":2026,"Source title":"Kybernetes","Cited by":7,"DOI":"10.1108\/K-09-2025-2339"},{"Title":"Generative artificial intelligence and ChatGPT in agriculture supply chain management: a systematic literature review and future research agenda","Authors":"Li M.; Basit A.; Javed A.; Song X.; Ge Y.","Year":2026,"Source title":"British Food Journal","Cited by":5,"DOI":"10.1108\/BFJ-05-2025-0720"},{"Title":"Development and Validation of an AI Literacy Scale for Pre-Service Teachers in Thailand","Authors":"Pingmuang P.; Koraneekij P.; Khlaisang J.","Year":2026,"Source title":"Electronic Journal of e-Learning","Cited by":4,"DOI":"10.34190\/ejel.24.1.3990"},{"Title":"From Assistance to Autonomy: AI Integration in Structured Research-Based Learning for Higher Education","Authors":"Festiyed F.; Desnita D.; Natasya Z.; Fadillah M.A.; Novitra F.","Year":2026,"Source title":"Electronic Journal of e-Learning","Cited by":4,"DOI":"10.34190\/ejel.24.1.4416"},{"Title":"Analysis of Factors Affecting Academic Success with Machine Learning: Data-Driven Inferences in Education","Authors":"Alkan A.","Year":2026,"Source title":"Turkish Journal of Engineering","Cited by":4,"DOI":"10.31127\/tuje.1779491"},{"Title":"Turbine blade investment casting: a review of process mechanisms, modeling, and intelligent manufacturing","Authors":"Ren S.; Zhang R.; Bu K.; Xiao Z.; Liu J.","Year":2027,"Source title":"Progress in Materials Science","Cited by":3,"DOI":"10.1016\/j.pmatsci.2026.101748"},{"Title":"Large language models in smart construction: a systematic review of implementation strategies, applications and future directions","Authors":"Gao Y.; Yiu T.W.; Shen X.; Tam V.W.Y.","Year":2026,"Source title":"Engineering, Construction and Architectural Management","Cited by":3,"DOI":"10.1108\/ECAM-10-2025-1668"},{"Title":"Evaluation of health professionals’ perceptions on the use of artificial intelligence in radiology: a questionnaire-based study","Authors":"Göde A.; Açikgöz G.; Erdem H.; Dadak A.","Year":2026,"Source title":"BMC Medical Education","Cited by":3,"DOI":"10.1186\/s12909-025-08392-0"},{"Title":"AI-Supported Learning in Online Discussion Forums: A Scoping Review","Authors":"Yoshida M.; Duangchinda V.; Ruangrit N.","Year":2026,"Source title":"Electronic Journal of e-Learning","Cited by":3,"DOI":"10.34190\/ejel.24.1.4409"},{"Title":"GenAI personalization: antecedents, outcomes, mediators, and moderators","Authors":"Jaiswal R.; Gupta S.; Chen P.-J.","Year":2026,"Source title":"International Journal of Contemporary Hospitality Management","Cited by":3,"DOI":"10.1108\/IJCHM-07-2025-1056"},{"Title":"From Intelligence to Trust: Evaluating AI-Powered Service Quality for User Satisfaction and Continuance in mHealth","Authors":"Abdellatief M.; Alotaibi R.S.","Year":2026,"Source title":"Statistics, Optimization and Information Computing","Cited by":3,"DOI":"10.19139\/soic-2310-5070-3032"},{"Title":"Fostering Creativity Through Meta Virtual Project-Based Networked Learning: An In-Depth Examination","Authors":"Khotimah K.; Budiarto M.K.; Amarulloh A.; Diningrat S.W.M.; Carreza A.N.; Son J.H.","Year":2026,"Source title":"Electronic Journal of e-Learning","Cited by":3,"DOI":"10.34190\/ejel.24.1.4302"},{"Title":"Cognitive status of nursing postgraduates toward Generative Artificial Intelligence: a qualitative study based on the UTAUT framework","Authors":"Jiang H.; Wang Z.; Meng M.; Li B.; Chen S.; Yang D.; Li X.; Hao Y.","Year":2026,"Source title":"BMC Nursing","Cited by":3,"DOI":"10.1186\/s12912-025-04187-2"}];
+
+const layoutBase = {
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor: 'rgba(0,0,0,0)',
+  font: { color: '#1b2430', family: 'Inter, Sarabun, sans-serif', size:12 },
+  margin: { t: 30, r: 20, b: 50, l: 60 },
+};
+const gridColor = '#eef0f4';
+const colors = ['#3457d5','#e3722f','#1f9d6c','#8a5cf6','#e0b400','#0891b2','#e0518f'];
+const config = { responsive:true, displaylogo:false };
+
+// KPIs
+document.getElementById('kpi-total').textContent = DATA.total_papers.toLocaleString();
+document.getElementById('kpi-sources').textContent = Object.keys(DATA.top_sources).length + '+';
+document.getElementById('kpi-cited').textContent = DATA.papers_with_citation;
+document.getElementById('kpi-totalcite').textContent = DATA.total_citations;
+let oaTotal = 0;
+for (const k in DATA.oa_counts) { if (k !== 'Not specified / Closed') oaTotal += DATA.oa_counts[k]; }
+document.getElementById('kpi-oa').textContent = ((oaTotal / DATA.total_papers) * 100).toFixed(1) + '%';
+
+// 1a. Year x DocType stacked bar
+(function(){
+  const years = Object.keys(DATA.year_type).sort();
+  const types = new Set();
+  years.forEach(y => Object.keys(DATA.year_type[y]).forEach(t => types.add(t)));
+  const typeList = Array.from(types);
+  const traces = typeList.map((t,i) => ({
+    x: years,
+    y: years.map(y => DATA.year_type[y][t] || 0),
+    name: t,
+    type: 'bar',
+    marker: { color: colors[i % colors.length] }
+  }));
+  Plotly.newPlot('chart-year-type', traces, {
+    ...layoutBase,
+    barmode: 'stack',
+    title: { text:'จำนวนบทความต่อปี (แยกตามประเภท)', font:{size:14, color:'#0f1626'} },
+    xaxis: { title:'ปี', gridcolor: gridColor, linecolor: '#dde1e8' },
+    yaxis: { title:'จำนวนบทความ', gridcolor: gridColor, linecolor: '#dde1e8' },
+    legend: { orientation:'h', y:-0.25, font:{color:'#6b7688'} }
+  }, config);
+})();
+
+// 1b. Document type pie
+(function(){
+  const labels = Object.keys(DATA.doc_types);
+  const values = labels.map(l => DATA.doc_types[l]);
+  Plotly.newPlot('chart-doctype', [{
+    labels, values, type:'pie', hole:0.45,
+    marker: { colors: colors },
+    textinfo: 'label+percent',
+    textfont: { size: 11 }
+  }], {
+    ...layoutBase,
+    title: { text:'สัดส่วนประเภทเอกสาร (Document Type)', font:{size:14, color:'#0f1626'} },
+    showlegend: false
+  }, config);
+})();
+
+// 2. Top sources horizontal bar
+(function(){
+  const entries = Object.entries(DATA.top_sources).reverse();
+  Plotly.newPlot('chart-sources', [{
+    x: entries.map(e => e[1]),
+    y: entries.map(e => e[0]),
+    type: 'bar',
+    orientation: 'h',
+    marker: { color: '#3457d5' }
+  }], {
+    ...layoutBase,
+    title: { text:'Top 15 แหล่งตีพิมพ์', font:{size:14, color:'#0f1626'} },
+    xaxis: { title:'จำนวนบทความ', gridcolor: gridColor },
+    yaxis: { automargin: true },
+    margin: { t:30, r:20, b:50, l:280 }
+  }, config);
+})();
+
+// 3a. Top authors
+(function(){
+  const entries = DATA.top_authors.slice(0,12).reverse();
+  Plotly.newPlot('chart-authors', [{
+    x: entries.map(e => e[1]),
+    y: entries.map(e => e[0]),
+    type: 'bar',
+    orientation: 'h',
+    marker: { color: '#e3722f' }
+  }], {
+    ...layoutBase,
+    title: { text:'Top ผู้เขียน (จำนวนบทความ)', font:{size:14, color:'#0f1626'} },
+    xaxis: { title:'จำนวนบทความ', gridcolor: gridColor },
+    yaxis: { automargin: true },
+    margin: { t:30, r:20, b:50, l:170 }
+  }, config);
+})();
+
+// 3b. n authors distribution
+(function(){
+  const keys = Object.keys(DATA.n_authors_dist).map(Number).sort((a,b)=>a-b);
+  Plotly.newPlot('chart-nauthors', [{
+    x: keys,
+    y: keys.map(k => DATA.n_authors_dist[k]),
+    type: 'bar',
+    marker: { color: '#1f9d6c' }
+  }], {
+    ...layoutBase,
+    title: { text:'จำนวนผู้เขียนต่อบทความ (การกระจายตัว)', font:{size:14, color:'#0f1626'} },
+    xaxis: { title:'จำนวนผู้เขียน', gridcolor: gridColor, dtick:1 },
+    yaxis: { title:'จำนวนบทความ', gridcolor: gridColor }
+  }, config);
+})();
+
+// 4a. Citation distribution (log y since dominated by 0)
+(function(){
+  const keys = Object.keys(DATA.cited_dist).map(Number).sort((a,b)=>a-b);
+  Plotly.newPlot('chart-citedist', [{
+    x: keys,
+    y: keys.map(k => DATA.cited_dist[k]),
+    type: 'bar',
+    marker: { color: '#8a5cf6' }
+  }], {
+    ...layoutBase,
+    title: { text:'การกระจายตัวของจำนวนการอ้างอิง (log scale)', font:{size:14, color:'#0f1626'} },
+    xaxis: { title:'จำนวน Cited by', gridcolor: gridColor, dtick:1 },
+    yaxis: { title:'จำนวนบทความ', type:'log', gridcolor: gridColor }
+  }, config);
+})();
+
+// 4b. Open access donut
+(function(){
+  const labels = Object.keys(DATA.oa_counts);
+  const values = labels.map(l => DATA.oa_counts[l]);
+  Plotly.newPlot('chart-oa', [{
+    labels, values, type:'pie', hole:0.5,
+    domain: { y: [0, 0.78] },
+    marker: { colors: colors, line: { color: '#ffffff', width: 2 } },
+    textinfo: 'percent',
+    textposition: 'outside',
+    automargin: true,
+    textfont: { size: 11, color: '#3a4353' }
+  }], {
+    ...layoutBase,
+    title: { text:'สัดส่วน Open Access', font:{size:14, color:'#0f1626'} },
+    margin: { t: 40, r: 30, b: 20, l: 30 },
+    legend: { orientation:'h', y:-0.05, x:0.5, xanchor:'center', font:{size:10, color:'#6b7688'} },
+    showlegend: true
+  }, config);
+})();
+
+// Top cited table
+(function(){
+  const tbody = document.querySelector('#table-top-cited tbody');
+  TOP_CITED.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    const doiLink = row.DOI ? `<a href="https://doi.org/${row.DOI}" target="_blank">${row.Title}</a>` : row.Title;
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td>${doiLink}</td>
+      <td>${row.Authors}</td>
+      <td>${row['Source title']}</td>
+      <td>${row.Year}</td>
+      <td style="text-align:center;"><span class="cite-badge">${row['Cited by']}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+})();
+
+// 5. Keywords horizontal bar
+(function(){
+  const entries = DATA.top_kw.slice(0,25).reverse();
+  Plotly.newPlot('chart-keywords', [{
+    x: entries.map(e => e[1]),
+    y: entries.map(e => e[0]),
+    type: 'bar',
+    orientation: 'h',
+    marker: { color: '#0891b2' }
+  }], {
+    ...layoutBase,
+    title: { text:'Top 25 Author Keywords', font:{size:14, color:'#0f1626'} },
+    xaxis: { title:'จำนวนครั้งที่พบ', gridcolor: gridColor },
+    yaxis: { automargin: true },
+    margin: { t:30, r:20, b:50, l:260 }
+  }, config);
+})();
+</script>
+
+</body>
+</html>
