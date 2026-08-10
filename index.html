@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scopus EDA Report — Trend, Citation, Keyword Analysis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.32.0/plotly.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#070912;
+    --bg2:#0b0e1a;
+    --panel:rgba(255,255,255,0.035);
+    --panel-solid:#0e1220;
+    --panel-hover:rgba(255,255,255,0.06);
+    --border:rgba(255,255,255,0.09);
+    --border-hi:rgba(255,255,255,0.18);
+    --text:#eef1f8;
+    --sub:#8a93a8;
+    --sub-dim:#5c6478;
+    --accent:#5b8cff;
+    --accent2:#a78bfa;
+    --accent3:#34d5b0;
+    --accent4:#f5b942;
+    --accent5:#f472b6;
+    --accent-cyan:#22d3ee;
+    --glow: 0 0 0 1px var(--border-hi), 0 12px 40px -14px rgba(91,140,255,0.35);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter','Sarabun', -apple-system, 'Segoe UI', Arial, sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    position:relative;
+    overflow-x:hidden;
+  }
+
+  /* ---------- animated aurora background ---------- */
+  .aurora{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    pointer-events:none;
+    overflow:hidden;
+  }
+  .aurora span{
+    position:absolute;
+    border-radius:50%;
+    filter:blur(90px);
+    opacity:0.35;
+    will-change:transform;
+  }
+  .aurora span:nth-child(1){
+    width:520px; height:520px; left:-120px; top:-160px;
+    background:radial-gradient(circle, var(--accent), transparent 70%);
+    animation: drift1 26s ease-in-out infinite;
+  }
+  .aurora span:nth-child(2){
+    width:480px; height:480px; right:-140px; top:120px;
+    background:radial-gradient(circle, var(--accent2), transparent 70%);
+    animation: drift2 32s ease-in-out infinite;
+  }
+  .aurora span:nth-child(3){
+    width:420px; height:420px; left:30%; bottom:-200px;
+    background:radial-gradient(circle, var(--accent3), transparent 70%);
+    animation: drift3 30s ease-in-out infinite;
+  }
+  .aurora span:nth-child(4){
+    width:360px; height:360px; right:15%; bottom:10%;
+    background:radial-gradient(circle, var(--accent5), transparent 70%);
+    opacity:0.22;
+    animation: drift1 22s ease-in-out infinite reverse;
+  }
+  @keyframes drift1{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(60px,40px) scale(1.12); }
+  }
+  @keyframes drift2{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(-50px,60px) scale(1.08); }
+  }
+  @keyframes drift3{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(40px,-50px) scale(1.15); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .aurora span{ animation:none !important; }
+    html{ scroll-behavior:auto; }
+  }
+
+  .noise{
+    position:fixed; inset:0; z-index:1; pointer-events:none;
+    background-image:radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size:3px 3px;
+    opacity:0.5;
+  }
+
+  /* ---------- nav ---------- */
+  nav{
+    position:sticky;
+    top:0;
+    z-index:50;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 40px;
+    background:rgba(7,9,18,0.72);
+    backdrop-filter:blur(16px) saturate(140%);
+    -webkit-backdrop-filter:blur(16px) saturate(140%);
+    border-bottom:1px solid var(--border);
+  }
+  nav .brand{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:14.5px;
+    color:var(--text);
+  }
+  nav .brand .dot{
+    width:9px; height:9px; border-radius:50%;
+    background:linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow:0 0 12px var(--accent);
+  }
+  nav .links{
+    display:flex;
+    gap:4px;
+  }
+  nav .links a{
+    font-size:12.5px;
+    font-weight:500;
+    color:var(--sub);
+    text-decoration:none;
+    padding:7px 13px;
+    border-radius:20px;
+    transition:color .2s, background .2s;
+  }
+  nav .links a:hover{ color:var(--text); background:var(--panel-hover); }
+  nav .links a.active{ color:var(--text); background:var(--panel-hover); box-shadow:inset 0 0 0 1px var(--border-hi); }
+  @media(max-width:900px){
+    nav .links{ display:none; }
+  }
+
+  /* ---------- hero ---------- */
+  header.hero{
+    position:relative;
+    z-index:2;
+    padding:64px 40px 44px;
+    text-align:left;
+  }
+  header.hero .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--accent-cyan);
+    font-weight:500;
+    margin-bottom:14px;
+    display:flex; align-items:center; gap:8px;
+  }
+  header.hero .eyebrow::before{
+    content:'';
+    width:6px; height:6px; border-radius:50%;
+    background:var(--accent3);
+    box-shadow:0 0 8px var(--accent3);
+    display:inline-block;
+    animation:pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:.4; transform:scale(0.7); }
+  }
+  header.hero h1{
+    margin:0 0 12px;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:clamp(30px, 4.2vw, 46px);
+    font-weight:700;
+    letter-spacing:-.02em;
+    line-height:1.12;
+    background:linear-gradient(100deg, #ffffff 15%, var(--accent) 55%, var(--accent2) 85%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    max-width:760px;
+  }
+  header.hero p.sub{
+    margin:0;
+    color:var(--sub);
+    font-size:15px;
+    max-width:560px;
+  }
+
+  .wrap{
+    position:relative;
+    z-index:2;
+    max-width:1200px;
+    margin:0 auto;
+    padding:0 40px 80px;
+  }
+
+  /* ---------- KPI cards ---------- */
+  .kpis{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:14px;
+    margin:8px 0 28px;
+  }
+  .kpi{
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:20px 18px;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+    overflow:hidden;
+  }
+  .kpi::before{
+    content:'';
+    position:absolute; inset:0;
+    background:linear-gradient(135deg, rgba(91,140,255,0.10), transparent 60%);
+    opacity:0;
+    transition:opacity .25s ease;
+  }
+  .kpi:hover{
+    transform:translateY(-3px);
+    border-color:var(--border-hi);
+    box-shadow:var(--glow);
+  }
+  .kpi:hover::before{ opacity:1; }
+  .kpi .num{
+    font-family:'JetBrains Mono', monospace;
+    font-size:28px;
+    font-weight:600;
+    color:var(--text);
+    letter-spacing:-.01em;
+    position:relative;
+  }
+  .kpi .label{
+    font-size:12px;
+    color:var(--sub);
+    margin-top:6px;
+    font-weight:500;
+    position:relative;
+  }
+  .kpi:nth-child(1) .num{ color:var(--accent); }
+  .kpi:nth-child(2) .num{ color:var(--accent-cyan); }
+  .kpi:nth-child(3) .num{ color:var(--accent2); }
+  .kpi:nth-child(4) .num{ color:var(--accent5); }
+  .kpi:nth-child(5) .num{ color:var(--accent3); }
+
+  /* ---------- reveal on scroll ---------- */
+  .reveal{
+    opacity:0;
+    transform:translateY(18px);
+    transition:opacity .6s ease, transform .6s ease;
+  }
+  .reveal.in{
+    opacity:1;
+    transform:translateY(0);
+  }
+
+  section{
+    margin-top:56px;
+    scroll-margin-top:80px;
+  }
+  section h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:20px;
+    font-weight:600;
+    margin:0 0 6px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:var(--text);
+  }
+  section h2 .idx{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    color:var(--accent);
+    font-weight:500;
+  }
+  section h2 .tag{
+    font-size:10.5px;
+    background:rgba(91,140,255,0.1);
+    border:1px solid rgba(91,140,255,0.28);
+    color:var(--accent);
+    padding:3px 10px;
+    border-radius:20px;
+    font-weight:600;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+  }
+  section .desc{
+    color:var(--sub);
+    font-size:13.5px;
+    margin:0 0 18px;
+    max-width:800px;
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:18px 16px 8px;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    transition:border-color .25s ease, box-shadow .25s ease;
+  }
+  .card:hover{
+    border-color:var(--border-hi);
+    box-shadow:var(--glow);
+  }
+  .grid2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+  }
+  @media(max-width:900px){
+    .grid2{grid-template-columns:1fr;}
+    .kpis{grid-template-columns:repeat(2,1fr);}
+    .wrap{padding:0 18px 60px;}
+    header.hero{padding:44px 18px 32px;}
+    nav{padding:12px 18px;}
+  }
+
+  /* ---------- keyword cloud ---------- */
+  .kw-cloud{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    padding:20px 4px 24px;
+  }
+  .kw-chip{
+    font-family:'JetBrains Mono', monospace;
+    border-radius:999px;
+    padding:6px 14px;
+    border:1px solid var(--border);
+    background:rgba(255,255,255,0.03);
+    color:var(--text);
+    cursor:default;
+    transition:transform .18s ease, border-color .18s ease, background .18s ease;
+    white-space:nowrap;
+  }
+  .kw-chip:hover{
+    transform:translateY(-2px) scale(1.04);
+    border-color:var(--border-hi);
+    background:var(--panel-hover);
+  }
+  .kw-chip .n{
+    color:var(--sub-dim);
+    font-size:0.75em;
+    margin-left:6px;
+  }
+
+  /* ---------- table ---------- */
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  th, td{
+    text-align:left;
+    padding:12px 12px;
+    border-bottom:1px solid var(--border);
+    vertical-align:top;
+  }
+  th{
+    color:var(--sub);
+    font-weight:600;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    font-family:'JetBrains Mono', monospace;
+  }
+  tbody tr{ transition:background .18s ease; }
+  tbody tr:hover td{ background:rgba(255,255,255,0.035); }
+  .rank{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:600;
+    color:var(--sub-dim);
+    width:26px;
+  }
+  .rank.top1{ color:#ffd76a; }
+  .rank.top2{ color:#c9d4e0; }
+  .rank.top3{ color:#e0a86f; }
+  .cite-badge{
+    display:inline-block;
+    background:rgba(91,140,255,0.12);
+    border:1px solid rgba(91,140,255,0.28);
+    color:var(--accent);
+    border-radius:20px;
+    padding:3px 12px;
+    font-weight:700;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+  }
+
+  .note{
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    background:rgba(245,185,66,0.07);
+    border:1px solid rgba(245,185,66,0.28);
+    border-radius:14px;
+    padding:14px 18px;
+    font-size:13px;
+    color:#e0c076;
+    margin-bottom:8px;
+  }
+  .note b{ color:#f5c95f; }
+  .note .icon{ font-size:16px; line-height:1.3; }
+
+  a{color:var(--accent); text-decoration:none; font-weight:500;}
+  a:hover{ color:var(--accent-cyan); text-decoration:underline; }
+
+  footer{
+    position:relative; z-index:2;
+    text-align:center;
+    color:var(--sub-dim);
+    font-size:12px;
+    padding:36px 0 24px;
+    border-top:1px solid var(--border);
+    margin-top:60px;
+  }
+  footer span{ color:var(--sub); }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span><span></span></div>
+<div class="noise"></div>
+
+<nav>
+  <div class="brand"><span class="dot"></span>Scopus Analytics</div>
+  <div class="links">
+    <a href="#trend">Trend</a>
+    <a href="#sources">Sources</a>
+    <a href="#authors">Authors</a>
+    <a href="#citation">Citation</a>
+    <a href="#keywords">Keywords</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="eyebrow">Scopus Export &middot; EDA Report</div>
+  <h1>Trend, Citation &amp; Keyword Analysis</h1>
+  <p class="sub">สำรวจข้อมูลบทความวิจัย 1,000 รายการจาก Scopus — วิเคราะห์ด้วย Python (pandas) และแสดงผลแบบ interactive ด้วย Plotly.js</p>
+</header>
+
+<div class="wrap">
+
+  <div class="kpis reveal">
+    <div class="kpi"><div class="num" id="kpi-total">0</div><div class="label">บทความทั้งหมด</div></div>
+    <div class="kpi"><div class="num" id="kpi-sources">0</div><div class="label">แหล่งตีพิมพ์ (unique)</div></div>
+    <div class="kpi"><div class="num" id="kpi-cited">0</div><div class="label">บทความที่ถูกอ้างอิง ≥1</div></div>
+    <div class="kpi"><div class="num" id="kpi-totalcite">0</div><div class="label">ยอดอ้างอิงรวม</div></div>
+    <div class="kpi"><div class="num" id="kpi-oa">0%</div><div class="label">Open Access</div></div>
+  </div>
+
+  <div class="note reveal">
+    <span class="icon">⚠️</span>
+    <span><b>สังเกต:</b> ชุดข้อมูลนี้เป็นบทความที่เพิ่งตีพิมพ์มาก (ปี 2026–2027 เกือบทั้งหมด รวมถึง "in press") ทำให้ยอดอ้างอิง (Cited by) ยังต่ำมาก — เหมาะกับการดู trend หัวข้อ/แหล่งตีพิมพ์ มากกว่าการวัด impact ระยะยาว</span>
+  </div>
+
+  <!-- TREND -->
+  <section id="trend">
+    <h2 class="reveal"><span class="idx">01</span> Trend — แนวโน้มการตีพิมพ์ <span class="tag">Trend</span></h2>
+    <p class="desc reveal">จำนวนบทความแยกตามปีและประเภทเอกสาร</p>
+    <div class="grid2">
+      <div class="card reveal"><div id="chart-year-type" style="height:380px;"></div></div>
+      <div class="card reveal"><div id="chart-doctype" style="height:380px;"></div></div>
+    </div>
+  </section>
+
+  <!-- SOURCES -->
+  <section id="sources">
+    <h2 class="reveal"><span class="idx">02</span> แหล่งตีพิมพ์ (Top Sources) <span class="tag">Trend</span></h2>
+    <p class="desc reveal">วารสาร / Conference proceedings ที่มีบทความในชุดข้อมูลนี้มากที่สุด</p>
+    <div class="card reveal"><div id="chart-sources" style="height:460px;"></div></div>
+  </section>
+
+  <!-- AUTHORS -->
+  <section id="authors">
+    <h2 class="reveal"><span class="idx">03</span> ผู้เขียน <span class="tag">Trend</span></h2>
+    <div class="grid2">
+      <div class="card reveal">
+        <div id="chart-authors" style="height:400px;"></div>
+      </div>
+      <div class="card reveal">
+        <div id="chart-nauthors" style="height:400px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CITATION -->
+  <section id="citation">
+    <h2 class="reveal"><span class="idx">04</span> Citation Analysis <span class="tag">Citation</span></h2>
+    <p class="desc reveal">การกระจายตัวของจำนวนการอ้างอิง และบทความที่ถูกอ้างอิงมากที่สุด</p>
+    <div class="grid2">
+      <div class="card reveal"><div id="chart-citedist" style="height:380px;"></div></div>
+      <div class="card reveal"><div id="chart-oa" style="height:460px;"></div></div>
+    </div>
+
+    <div class="card reveal" style="margin-top:20px; padding:20px;">
+      <h3 style="margin-top:0; font-size:15px; font-family:'Space Grotesk',sans-serif; font-weight:600;">🏆 Top Cited Papers</h3>
+      <table id="table-top-cited">
+        <thead>
+          <tr><th>#</th><th>Title</th><th>ผู้เขียน</th><th>แหล่งตีพิมพ์</th><th>ปี</th><th style="text-align:center;">Cited</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- KEYWORDS -->
+  <section id="keywords">
+    <h2 class="reveal"><span class="idx">05</span> Keyword Analysis <span class="tag">Keyword</span></h2>
+    <p class="desc reveal">คำสำคัญ (Author Keywords) ที่พบบ่อยที่สุดในชุดข้อมูล — นับความถี่แบบตรงตัว (exact match) ยังไม่ใช้ text embedding</p>
+    <div class="card reveal">
+      <div class="kw-cloud" id="kw-cloud"></div>
+    </div>
+    <div class="card reveal" style="margin-top:20px;"><div id="chart-keywords" style="height:560px;"></div></div>
+  </section>
+
+</div>
+
+<footer>
+  สร้างจากไฟล์ <span>scopus_export_Aug_10-2026</span> &middot; วิเคราะห์ด้วย Python (pandas) + แสดงผลด้วย Plotly.js
+</footer>
+
+<script>
+const DATA = {
+  "total_papers": 1000,
+  "year_type": {
+    "2026": {
+      "Article": 119,
+      "Conference paper": 2,
+      "Conference review": 0,
+      "Letter": 0,
+      "Review": 14
+    },
+    "2027": {
+      "Article": 201,
+      "Conference paper": 598,
+      "Conference review": 30,
+      "Letter": 1,
+      "Review": 35
+    }
+  },
+  "doc_types": {
+    "Conference paper": 600,
+    "Article": 320,
+    "Review": 49,
+    "Conference review": 30,
+    "Letter": 1
+  },
+  "top_kw": [
+    [
+      "artificial intelligence",
+      135
+    ],
+    [
+      "large language models",
+      67
+    ],
+    [
+      "machine learning",
+      63
+    ],
+    [
+      "generative ai",
+      63
+    ],
+    [
+      "explainable ai",
+      27
+    ],
+    [
+      "large language model",
+      21
+    ],
+    [
+      "explainable artificial intelligence",
+      20
+    ],
+    [
+      "generative artificial intelligence",
+      20
+    ],
+    [
+      "artificial intelligence (ai)",
+      18
+    ],
+    [
+      "higher education",
+      16
+    ],
+    [
+      "ai",
+      16
+    ],
+    [
+      "learning analytics",
+      16
+    ],
+    [
+      "ai literacy",
+      15
+    ],
+    [
+      "deep learning",
+      15
+    ],
+    [
+      "retrieval-augmented generation",
+      15
+    ],
+    [
+      "shap",
+      13
+    ],
+    [
+      "cybersecurity",
+      11
+    ],
+    [
+      "natural language processing",
+      11
+    ],
+    [
+      "federated learning",
+      11
+    ],
+    [
+      "collaborative learning",
+      10
+    ],
+    [
+      "human-ai collaboration",
+      10
+    ],
+    [
+      "llm",
+      10
+    ],
+    [
+      "clinical decision support",
+      8
+    ],
+    [
+      "decision support systems",
+      8
+    ],
+    [
+      "large language models (llms)",
+      8
+    ]
+  ],
+  "top_sources": {
+    "Lecture Notes in Computer Science": 442,
+    "Expert Systems with Applications": 116,
+    "Lecture Notes in Networks and Systems": 60,
+    "IFIP Advances in Information and Communication Technology": 58,
+    "Communications in Computer and Information Science": 49,
+    "Information Processing and Management": 21,
+    "Neural Networks": 15,
+    "Journal of Retailing and Consumer Services": 11,
+    "Reliability Engineering and System Safety": 11,
+    "Electric Power Systems Research": 9,
+    "Smart Innovation, Systems and Technologies": 9,
+    "Talanta": 8,
+    "Mechanisms and Machine Science": 8,
+    "International Journal of Hospitality Management": 7,
+    "Future Generation Computer Systems": 7
+  },
+  "top_authors": [
+    [
+      "Song, Yukyeong",
+      5
+    ],
+    [
+      "Bellazzi, Riccardo",
+      4
+    ],
+    [
+      "Xing, Wanli",
+      4
+    ],
+    [
+      "Karumbaiah, Shamya",
+      4
+    ],
+    [
+      "Zhai, Xiaoming",
+      3
+    ],
+    [
+      "Mota, Vinícius F. S.",
+      3
+    ],
+    [
+      "Huang, Yueh-Min",
+      3
+    ],
+    [
+      "Shadiev, Rustam",
+      3
+    ],
+    [
+      "Zhang, Yi",
+      3
+    ],
+    [
+      "Rodrigues, Luiz",
+      3
+    ],
+    [
+      "Chochliouros, Ioannis P.",
+      3
+    ],
+    [
+      "Spiliopoulou, Anastasia S.",
+      3
+    ],
+    [
+      "Cordeiro, Luís",
+      3
+    ],
+    [
+      "Fernandes, João",
+      3
+    ],
+    [
+      "Filipe, Sandra",
+      3
+    ]
+  ],
+  "n_authors_dist": {
+    "0": 30,
+    "1": 44,
+    "2": 167,
+    "3": 197,
+    "4": 176,
+    "5": 125,
+    "6": 114,
+    "7": 54,
+    "8": 39,
+    "9": 28,
+    "10": 8,
+    "11": 4,
+    "12": 4,
+    "13": 2,
+    "14": 2,
+    "16": 5,
+    "20": 1
+  },
+  "oa_counts": {
+    "Not specified / Closed": 853,
+    "All Open Access; Hybrid Gold Open Access": 73,
+    "All Open Access; Green Open Access": 24,
+    "All Open Access; Gold Open Access; Green Open Access": 20,
+    "All Open Access; Gold Open Access": 16,
+    "All Open Access; Green Open Access; Hybrid Gold Open Access": 11,
+    "All Open Access; Bronze Open Access": 3
+  },
+  "cited_dist": {
+    "0": 966,
+    "1": 14,
+    "2": 5,
+    "3": 8,
+    "4": 3,
+    "5": 1,
+    "7": 2,
+    "9": 1
+  },
+  "total_citations": 88,
+  "papers_with_citation": 34
+};
+const TOP_CITED = [{"Title":"An enhanced interpretable ML approach for forecasting long-term CO2 and N2O emissions via optimized random forest modeling","Authors":"Özüpak Y.; Aslan E.","Year":2027,"Source title":"Fuel","Cited by":9,"DOI":"10.1016\/j.fuel.2026.139723"},{"Title":"Dancing with the algorithm: a framework to navigate knowledge and autonomy in AI-assisted managerial decisions","Authors":"Cristofaro M.; Bañón-Gomis A.J.","Year":2026,"Source title":"Journal of Knowledge Management","Cited by":7,"DOI":"10.1108\/JKM-06-2025-0870"},{"Title":"Stabilizing truth in educational sciences: a systematic review of generative AI in education","Authors":"Brezovec E.; Zelić M.; Zagode A.M.","Year":2026,"Source title":"Kybernetes","Cited by":7,"DOI":"10.1108\/K-09-2025-2339"},{"Title":"Generative artificial intelligence and ChatGPT in agriculture supply chain management: a systematic literature review and future research agenda","Authors":"Li M.; Basit A.; Javed A.; Song X.; Ge Y.","Year":2026,"Source title":"British Food Journal","Cited by":5,"DOI":"10.1108\/BFJ-05-2025-0720"},{"Title":"Development and Validation of an AI Literacy Scale for Pre-Service Teachers in Thailand","Authors":"Pingmuang P.; Koraneekij P.; Khlaisang J.","Year":2026,"Source title":"Electronic Journal of e-Learning","Cited by":4,"DOI":"10.34190\/ejel.24.1.3990"},{"Title":"From Assistance to Autonomy: AI Integration in Structured Research-Based Learning for Higher Education","Authors":"Festiyed F.; Desnita D.; Natasya Z.; Fadillah M.A.; Novitra F.","Year":2026,"Source title":"Electronic Journal of e-Learning","Cited by":4,"DOI":"10.34190\/ejel.24.1.4416"},{"Title":"Analysis of Factors Affecting Academic Success with Machine Learning: Data-Driven Inferences in Education","Authors":"Alkan A.","Year":2026,"Source title":"Turkish Journal of Engineering","Cited by":4,"DOI":"10.31127\/tuje.1779491"},{"Title":"Turbine blade investment casting: a review of process mechanisms, modeling, and intelligent manufacturing","Authors":"Ren S.; Zhang R.; Bu K.; Xiao Z.; Liu J.","Year":2027,"Source title":"Progress in Materials Science","Cited by":3,"DOI":"10.1016\/j.pmatsci.2026.101748"},{"Title":"Large language models in smart construction: a systematic review of implementation strategies, applications and future directions","Authors":"Gao Y.; Yiu T.W.; Shen X.; Tam V.W.Y.","Year":2026,"Source title":"Engineering, Construction and Architectural Management","Cited by":3,"DOI":"10.1108\/ECAM-10-2025-1668"},{"Title":"Evaluation of health professionals’ perceptions on the use of artificial intelligence in radiology: a questionnaire-based study","Authors":"Göde A.; Açikgöz G.; Erdem H.; Dadak A.","Year":2026,"Source title":"BMC Medical Education","Cited by":3,"DOI":"10.1186\/s12909-025-08392-0"},{"Title":"AI-Supported Learning in Online Discussion Forums: A Scoping Review","Authors":"Yoshida M.; Duangchinda V.; Ruangrit N.","Year":2026,"Source title":"Electronic Journal of e-Learning","Cited by":3,"DOI":"10.34190\/ejel.24.1.4409"},{"Title":"GenAI personalization: antecedents, outcomes, mediators, and moderators","Authors":"Jaiswal R.; Gupta S.; Chen P.-J.","Year":2026,"Source title":"International Journal of Contemporary Hospitality Management","Cited by":3,"DOI":"10.1108\/IJCHM-07-2025-1056"},{"Title":"From Intelligence to Trust: Evaluating AI-Powered Service Quality for User Satisfaction and Continuance in mHealth","Authors":"Abdellatief M.; Alotaibi R.S.","Year":2026,"Source title":"Statistics, Optimization and Information Computing","Cited by":3,"DOI":"10.19139\/soic-2310-5070-3032"},{"Title":"Fostering Creativity Through Meta Virtual Project-Based Networked Learning: An In-Depth Examination","Authors":"Khotimah K.; Budiarto M.K.; Amarulloh A.; Diningrat S.W.M.; Carreza A.N.; Son J.H.","Year":2026,"Source title":"Electronic Journal of e-Learning","Cited by":3,"DOI":"10.34190\/ejel.24.1.4302"},{"Title":"Cognitive status of nursing postgraduates toward Generative Artificial Intelligence: a qualitative study based on the UTAUT framework","Authors":"Jiang H.; Wang Z.; Meng M.; Li B.; Chen S.; Yang D.; Li X.; Hao Y.","Year":2026,"Source title":"BMC Nursing","Cited by":3,"DOI":"10.1186\/s12912-025-04187-2"}];
+
+/* ---------- dark theme plotly base ---------- */
+const layoutBase = {
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor: 'rgba(0,0,0,0)',
+  font: { color: '#c9d1e0', family: 'Inter, Sarabun, sans-serif', size:12 },
+  margin: { t: 34, r: 20, b: 50, l: 60 },
+};
+const gridColor = 'rgba(255,255,255,0.07)';
+const lineColor = 'rgba(255,255,255,0.14)';
+const colors = ['#5b8cff','#f5b942','#34d5b0','#a78bfa','#f472b6','#22d3ee','#fb7185'];
+const config = { responsive:true, displaylogo:false };
+const titleFont = { size: 14, color: '#eef1f8', family: "'Space Grotesk', sans-serif" };
+
+// KPIs with count-up animation
+function countUp(el, target, opts={}) {
+  const isPercent = opts.percent;
+  const suffix = opts.suffix || '';
+  const dur = 1100;
+  const start = performance.now();
+  function tick(now){
+    const p = Math.min((now-start)/dur, 1);
+    const eased = 1 - Math.pow(1-p, 3);
+    const val = target * eased;
+    el.textContent = (isPercent ? val.toFixed(1) : Math.round(val).toLocaleString()) + suffix;
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+let oaTotal = 0;
+for (const k in DATA.oa_counts) { if (k !== 'Not specified / Closed') oaTotal += DATA.oa_counts[k]; }
+const oaPct = (oaTotal / DATA.total_papers) * 100;
+
+function initKPIs(){
+  countUp(document.getElementById('kpi-total'), DATA.total_papers);
+  countUp(document.getElementById('kpi-sources'), Object.keys(DATA.top_sources).length, {suffix:'+'});
+  countUp(document.getElementById('kpi-cited'), DATA.papers_with_citation);
+  countUp(document.getElementById('kpi-totalcite'), DATA.total_citations);
+  countUp(document.getElementById('kpi-oa'), oaPct, {percent:true, suffix:'%'});
+}
+
+// 1a. Year x DocType stacked bar
+(function(){
+  const years = Object.keys(DATA.year_type).sort();
+  const types = new Set();
+  years.forEach(y => Object.keys(DATA.year_type[y]).forEach(t => types.add(t)));
+  const typeList = Array.from(types);
+  const traces = typeList.map((t,i) => ({
+    x: years,
+    y: years.map(y => DATA.year_type[y][t] || 0),
+    name: t,
+    type: 'bar',
+    marker: { color: colors[i % colors.length] }
+  }));
+  Plotly.newPlot('chart-year-type', traces, {
+    ...layoutBase,
+    barmode: 'stack',
+    title: { text:'จำนวนบทความต่อปี (แยกตามประเภท)', font:titleFont },
+    xaxis: { title:'ปี', gridcolor: gridColor, linecolor: lineColor, zerolinecolor: lineColor },
+    yaxis: { title:'จำนวนบทความ', gridcolor: gridColor, linecolor: lineColor, zerolinecolor: lineColor },
+    legend: { orientation:'h', y:-0.25, font:{color:'#8a93a8'} }
+  }, config);
+})();
+
+// 1b. Document type pie
+(function(){
+  const labels = Object.keys(DATA.doc_types);
+  const values = labels.map(l => DATA.doc_types[l]);
+  Plotly.newPlot('chart-doctype', [{
+    labels, values, type:'pie', hole:0.55,
+    marker: { colors: colors, line:{ color:'#0b0e1a', width:2 } },
+    textinfo: 'label+percent',
+    textfont: { size: 11, color:'#eef1f8' }
+  }], {
+    ...layoutBase,
+    title: { text:'สัดส่วนประเภทเอกสาร (Document Type)', font:titleFont },
+    showlegend: false
+  }, config);
+})();
+
+// 2. Top sources horizontal bar
+(function(){
+  const entries = Object.entries(DATA.top_sources).reverse();
+  Plotly.newPlot('chart-sources', [{
+    x: entries.map(e => e[1]),
+    y: entries.map(e => e[0]),
+    type: 'bar',
+    orientation: 'h',
+    marker: { color: '#5b8cff' }
+  }], {
+    ...layoutBase,
+    title: { text:'Top 15 แหล่งตีพิมพ์', font:titleFont },
+    xaxis: { title:'จำนวนบทความ', gridcolor: gridColor, linecolor: lineColor },
+    yaxis: { automargin: true },
+    margin: { t:34, r:20, b:50, l:280 }
+  }, config);
+})();
+
+// 3a. Top authors
+(function(){
+  const entries = DATA.top_authors.slice(0,12).reverse();
+  Plotly.newPlot('chart-authors', [{
+    x: entries.map(e => e[1]),
+    y: entries.map(e => e[0]),
+    type: 'bar',
+    orientation: 'h',
+    marker: { color: '#f5b942' }
+  }], {
+    ...layoutBase,
+    title: { text:'Top ผู้เขียน (จำนวนบทความ)', font:titleFont },
+    xaxis: { title:'จำนวนบทความ', gridcolor: gridColor, linecolor: lineColor },
+    yaxis: { automargin: true },
+    margin: { t:34, r:20, b:50, l:170 }
+  }, config);
+})();
+
+// 3b. n authors distribution
+(function(){
+  const keys = Object.keys(DATA.n_authors_dist).map(Number).sort((a,b)=>a-b);
+  Plotly.newPlot('chart-nauthors', [{
+    x: keys,
+    y: keys.map(k => DATA.n_authors_dist[k]),
+    type: 'bar',
+    marker: { color: '#34d5b0' }
+  }], {
+    ...layoutBase,
+    title: { text:'จำนวนผู้เขียนต่อบทความ (การกระจายตัว)', font:titleFont },
+    xaxis: { title:'จำนวนผู้เขียน', gridcolor: gridColor, linecolor: lineColor, dtick:1 },
+    yaxis: { title:'จำนวนบทความ', gridcolor: gridColor, linecolor: lineColor }
+  }, config);
+})();
+
+// 4a. Citation distribution (log y since dominated by 0)
+(function(){
+  const keys = Object.keys(DATA.cited_dist).map(Number).sort((a,b)=>a-b);
+  Plotly.newPlot('chart-citedist', [{
+    x: keys,
+    y: keys.map(k => DATA.cited_dist[k]),
+    type: 'bar',
+    marker: { color: '#a78bfa' }
+  }], {
+    ...layoutBase,
+    title: { text:'การกระจายตัวของจำนวนการอ้างอิง (log scale)', font:titleFont },
+    xaxis: { title:'จำนวน Cited by', gridcolor: gridColor, linecolor: lineColor, dtick:1 },
+    yaxis: { title:'จำนวนบทความ', type:'log', gridcolor: gridColor, linecolor: lineColor }
+  }, config);
+})();
+
+// 4b. Open access donut
+(function(){
+  const labels = Object.keys(DATA.oa_counts);
+  const values = labels.map(l => DATA.oa_counts[l]);
+  Plotly.newPlot('chart-oa', [{
+    labels, values, type:'pie', hole:0.58,
+    domain: { y: [0, 0.78] },
+    marker: { colors: colors, line: { color: '#0b0e1a', width: 2 } },
+    textinfo: 'percent',
+    textposition: 'outside',
+    automargin: true,
+    textfont: { size: 11, color: '#c9d1e0' }
+  }], {
+    ...layoutBase,
+    title: { text:'สัดส่วน Open Access', font:titleFont },
+    margin: { t: 40, r: 30, b: 20, l: 30 },
+    legend: { orientation:'h', y:-0.05, x:0.5, xanchor:'center', font:{size:10, color:'#8a93a8'} },
+    showlegend: true
+  }, config);
+})();
+
+// Top cited table
+(function(){
+  const tbody = document.querySelector('#table-top-cited tbody');
+  const medal = ['top1','top2','top3'];
+  TOP_CITED.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    const doiLink = row.DOI ? `<a href="https://doi.org/${row.DOI}" target="_blank">${row.Title}</a>` : row.Title;
+    const rankClass = medal[i] ? ` ${medal[i]}` : '';
+    tr.innerHTML = `
+      <td class="rank${rankClass}">${i+1}</td>
+      <td>${doiLink}</td>
+      <td>${row.Authors}</td>
+      <td>${row['Source title']}</td>
+      <td>${row.Year}</td>
+      <td style="text-align:center;"><span class="cite-badge">${row['Cited by']}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+})();
+
+// 5a. Keyword tag cloud
+(function(){
+  const el = document.getElementById('kw-cloud');
+  const entries = DATA.top_kw.slice(0,25);
+  const maxN = entries[0][1], minN = entries[entries.length-1][1];
+  const palette = ['#5b8cff','#f5b942','#34d5b0','#a78bfa','#f472b6','#22d3ee'];
+  entries.forEach(([kw, n], i) => {
+    const scale = minN === maxN ? 0.5 : (n - minN) / (maxN - minN);
+    const size = 12.5 + scale * 15;
+    const chip = document.createElement('span');
+    chip.className = 'kw-chip';
+    chip.style.fontSize = size.toFixed(1) + 'px';
+    chip.style.color = palette[i % palette.length];
+    chip.innerHTML = `${kw}<span class="n">${n}</span>`;
+    el.appendChild(chip);
+  });
+})();
+
+// 5b. Keywords horizontal bar
+(function(){
+  const entries = DATA.top_kw.slice(0,25).reverse();
+  Plotly.newPlot('chart-keywords', [{
+    x: entries.map(e => e[1]),
+    y: entries.map(e => e[0]),
+    type: 'bar',
+    orientation: 'h',
+    marker: { color: '#22d3ee' }
+  }], {
+    ...layoutBase,
+    title: { text:'Top 25 Author Keywords', font:titleFont },
+    xaxis: { title:'จำนวนครั้งที่พบ', gridcolor: gridColor, linecolor: lineColor },
+    yaxis: { automargin: true },
+    margin: { t:34, r:20, b:50, l:260 }
+  }, config);
+})();
+
+/* ---------- scroll reveal ---------- */
+const revealEls = document.querySelectorAll('.reveal');
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting){
+      e.target.classList.add('in');
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+revealEls.forEach(el => io.observe(el));
+
+// KPI count-up triggers once visible
+const kpiBlock = document.querySelector('.kpis');
+const kpiIO = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting){
+      initKPIs();
+      kpiIO.disconnect();
+    }
+  });
+}, { threshold: 0.3 });
+kpiIO.observe(kpiBlock);
+
+/* ---------- scrollspy nav ---------- */
+const navLinks = document.querySelectorAll('nav .links a');
+const sections = Array.from(navLinks).map(a => document.querySelector(a.getAttribute('href')));
+function updateActiveNav(){
+  let idx = 0;
+  const y = window.scrollY + 120;
+  sections.forEach((s, i) => { if (s && s.offsetTop <= y) idx = i; });
+  navLinks.forEach((a,i) => a.classList.toggle('active', i===idx));
+}
+window.addEventListener('scroll', updateActiveNav, { passive:true });
+updateActiveNav();
+</script>
+
+</body>
+</html>
